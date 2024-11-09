@@ -1,20 +1,20 @@
 micropython 自己编译固件有几个好处
 
 - 只加入自己需要的模块降低硬件资源占用
-- `.py` 文件可以修改中中间码，并烧录到固件内部，
+- .py文件可以修改中中间码，并烧录到固件内部，
 - - 可以方便量产
 - - 可一定程度保护代码
 - - 更加省略了编译过程节省内存
 
-我这里 只记录 添加 `smartconfig` 的方法，并以`S2 mini`为例，其他`esp32` 同理。
+我这里 只记录 添加 smartconfig的方法，并以S2 mini为例，其他esp32 同理。
 简中网络上，几乎没有相关资料，有一些资料也是错的或无法使用。所以这里单独记录分享一下。 你可以直接下载 我编译好的
 https://github.com/joyanhui/file.leiyanhui.com/blob/main/esp32/
 
 # 准备
 
-- `linux`系统，我这里是ubuntu22.04
-- 科学工具 因为需要拉 `github`
-- 基本的 `linux` 基础
+- linux系统，我这里是pve lxc运行的ubuntu22.04
+- 科学工具 因为需要拉github
+- 基本的linux基础
 
 # 环境配置 和 依赖
 
@@ -30,40 +30,66 @@ apt install python3.11 python-is-python3
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python get-pip.py --force-reinstall
 pip install mpy-cross-v6
+
 ```
 
+
+
+
+
+
+
+Copy
 
 # 克隆代码
 
 ```bash
 mkdir mpy-bin && cd mpy-bin
+
 ```
 
 
+
+
+
+Copy
+
 ## esp-idf
 
-注意 不同的 `esp32`平台 `micropython`支持的`esp-idf`版本不同，详情参考 https://github.com/micropython/micropython/tree/master/ports/esp32#readme
-`linux`小白 一步一步操作，注意里面的警告信息
+注意 不同的esp32平台 micropython支持的esp-idf版本不同，详情参考 https://github.com/micropython/micropython/tree/master/ports/esp32#readme
+linux小白 一步一步操作，注意里面的警告信息
 
 ```bash
 git clone -b v4.4.5 --recursive https://github.com/espressif/esp-idf.git esp-idf-v4.4.5
 cd esp-idf-v4.4.5/
 git checkout v4.4.5
 git submodule update --init --recursive
+
 ```
 
+
+
+
+
+Copy
 
 处理环境变量
 
 ```bash
 ./install.sh 
 source export.sh
+
 ```
 
 
+
+
+
+Copy
+
 ## micropython
 
-本文基于 `1.20` 版本，如果新版失效，请 直接去下载 https://github.com/micropython/micropython/releases/download/v1.20.0/micropython-1.20.0.zip 不要 `git clone` 最新的
+本文基于 1.20 版本，如果新版失效，请 直接去下载 https://github.com/micropython/micropython/releases/download/v1.20.0/micropython-1.20.0.zip 不要 git clone最新的
 
 
 
@@ -73,55 +99,88 @@ git clone https://github.com/micropython/micropython.git
 cd micropython
 make -C mpy-cross
 cd ports/esp32
+
 ```
 
-# 测试默认编译`micropython`固件
+
+
+
+
+Copy
+
+# 测试默认编译micropython固件
 
 
 
 ```bash
 make submodules
 make  # make BOARD=LOLIN_S2_MINI
+
 ```
 
 
 
-直接`make`的话 是 `esp32` ，我这里是 `s2` ，并且是 `esp32 s2 mini`开发板 所以添加参数 `BOARD=LOLIN_S2_MINI` 这样就可以编译 了,编译后 会有提示 `./build-XXXX/ firmware.bin` 这个文件是合并后的，可以直接烧到 `esp32` 开发板上了。
+
+
+Copy
+
+直接make的话 是 esp32 ，我这里是 s2 ，并且是 esp32 s2 mini开发板 所以添加参数 BOARD=LOLIN_S2_MINI 这样就可以编译 了,编译后 会有提示 ./build-XXXX/ firmware.bin 这个文件是合并后的，可以直接烧到0x1000
 
 ## 推送到 nas
 
-我这里推送到`nas`里面，方便其他机器使用
+我这里推送到nas里面，方便其他机器使用
 
 ```bash
 rsync -avzut --progress  ./build-LOLIN_S2_MINI/firmware.bin    root@10.1.1.200:/mnt/nas/temp/firmware-my.bin 
+
 ```
 
 
+
+
+
+
+
+Copy
+
 ## 烧录
 
-在连接`esp32`的机器上从`nas`复制`bin`文件过来然后下入
+在连接esp32的机器上从nas复制bin文件过来然后下入
 
 ```bash
 esptool  --port COM3  erase_flash #擦除
 esptool --port COM3   --baud 1000000 write_flash -z 0x1000 firmware-my.bin # 写入从nas 拷贝过来的 新固件
+
 ```
 
 
 
-烧录完成后，重启板，`thonny` 链接上，输入 `help(‘modules’)` 查看模块
 
-# 添加 smartconfig 模块
+
+Copy
+
+烧录完成后，重启板，thonny 链接上，输入 help(‘modules’) 查看模块
+
+# 添加 smartconfig模块
 
 ```bash
 cd ~/mpy-bin/micropython/ports/esp32
+
 ```
 
 
-需要两个地方，1是 添加一个`smartconfig.c`文件，2 是修改还 `ports/esp32/main/CMakeLists.txt` 把 `smartconfig.c` 加进去
+
+
+
+
+
+Copy
+
+需要两个地方，1是 添加一个smarconfig.c文件，2 是修改还 ports/esp32/main/CMakeLists.txt 把 smarconfig.c 加进去
 
 ## CMakeLists.txt
 
-查看 `cat ~/mpy-bin/micropython/ports/esp32/main/CMakeLists.txt` 目前版本`1.20`版本 需要修改的内容在 54-92行 格式如下
+查看 cat ~/mpy-bin/micropython/ports/esp32/main/CMakeLists.txt 目前版本1.20版本 需要修改的内容在 54-92行 格式如下
 
 ```bash
 set(MICROPY_SOURCE_PORT
@@ -130,11 +189,17 @@ set(MICROPY_SOURCE_PORT
     machine_sdcard.c
     ...
 )
+
 ```
 
 
-我们需要在 `machine_sdcard.c` 后面添加一个 `smartconfig.c`，然后在 `machine_sdcard.c`的同目录下 创建一个 `smartconfig.c` (内容查看后文)
-修改后的 `CMakeLists.txt` 内容格式如下
+
+
+
+Copy
+
+我们需要在 machine_sdcard.c 后面添加一个 smarconfig.c，然后在 machine_sdcard.c的同目录下 创建一个 smarconfig.c (内容查看后文)
+修改后的 CMakeLists.txt 内容格式如下
 
 ```bash
 set(MICROPY_SOURCE_PORT
@@ -144,17 +209,27 @@ set(MICROPY_SOURCE_PORT
     smarconfig.c
     ...
 )
+
 ```
 
+
+
+
+
+Copy
 
 > 同理，可以在这里删掉不用的模块
 
-## smartconfig.c
+## smarconfig.c
 
 ```bash
 nano ~/mpy-bin/micropython/ports/esp32/machine_sdcard.c
+
 ```
 
+
+
+Copy
 
 内容参考后文。 找
 
@@ -165,8 +240,12 @@ nano ~/mpy-bin/micropython/ports/esp32/machine_sdcard.c
 ```bash
 make submodules
 make BOARD=LOLIN_S2_MINI
+
 ```
 
+
+
+Copy
 
 # 上级测试
 
@@ -392,13 +471,7 @@ send_ack(station.ifconfig()[0], station.config('mac'))
 
 ```
 
-### 参考链接
 
-
-* https://dev.leiyanhui.com/mcu/esp32-s2-mpy-smartconfig/
-* https://github.com/micropython/micropython/tree/master/ports/esp32 
-* https://github.com/Walkline80/MicroPython-SmartConfig-CModule/tree/master
-* https://github.com/espressif/esp-idf.git
 
 
 
