@@ -10,6 +10,6 @@ from lib.easynetwork import Client
 # print("IP Address: ", client.ifconfig()[0])
 from lib.wifi import wlan
 wlan()
-unraid_ip()
+
 
 
